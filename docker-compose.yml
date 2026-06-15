@@ -1,0 +1,168 @@
+services:
+  # FRONTEND - React
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: "/api/"
+        VITE_WEBSOCKET_URL: "/ws/chat/"
+    ports:
+      - "80:80"
+    volumes:
+      - static_data:/usr/share/nginx/html/static
+      - media_data:/usr/share/nginx/html/media 
+    depends_on:
+      - ai-service
+      - auth-service
+      - company-service
+      - seeker-service
+      - chat-service
+  
+  # AI SERVICE - WSGI
+  ai-service:
+    build:
+      context: ./ai-service
+    environment:
+      - DATABASE_URL=${AI_SERVICE_DB_URL}
+      - DEBUG=${DEBUG}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
+    env_file:
+      - ./ai-service/.env
+    volumes:  
+      - static_data:/app/staticfiles  
+    depends_on:
+      - ai-db
+
+  ai-db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${AI_SERVICE_DB_NAME}
+      POSTGRES_USER: ${AI_SERVICE_DB_USER}
+      POSTGRES_PASSWORD: ${AI_SERVICE_DB_PASS}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ai_data:/var/lib/postgresql/data
+
+  # AUTH SERVICE - WSGI
+  auth-service:
+    build:
+      context: ./auth-service
+    environment:
+      - JWT_SIGNING_KEY=${JWT_SIGNING_KEY}
+      - DATABASE_URL=${AUTH_SERVICE_DB_URL}
+      - DEBUG=${DEBUG}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+    volumes:
+      - static_data:/app/staticfiles
+    depends_on:
+      - auth-db
+
+  auth-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${AUTH_SERVICE_DB_NAME}
+      POSTGRES_USER: ${AUTH_SERVICE_DB_USER}
+      POSTGRES_PASSWORD: ${AUTH_SERVICE_DB_PASS}
+    volumes:
+      - auth_data:/var/lib/postgresql/data
+
+  # COMPANY SERVICE - WSGI
+  company-service:
+    build:
+      context: ./company-service
+    environment:
+      - JWT_SIGNING_KEY=${JWT_SIGNING_KEY}
+      - DATABASE_URL=${COMPANY_SERVICE_DB_URL}
+      - DEBUG=${DEBUG}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
+    volumes:
+      - static_data:/app/staticfiles
+      - media_data:/app/media 
+    depends_on:
+      - company-db
+
+  company-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${COMPANY_SERVICE_DB_NAME}
+      POSTGRES_USER: ${COMPANY_SERVICE_DB_USER}
+      POSTGRES_PASSWORD: ${COMPANY_SERVICE_DB_PASS}
+    volumes:
+      - company_data:/var/lib/postgresql/data
+
+  # SEEKER SERVICE - WSGI
+  seeker-service:
+    build:
+      context: ./seeker-service
+    environment:
+      - JWT_SIGNING_KEY=${JWT_SIGNING_KEY}
+      - DATABASE_URL=${SEEKER_SERVICE_DB_URL}
+      - DEBUG=${DEBUG}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN}
+    volumes:
+      - static_data:/app/staticfiles
+    depends_on:
+      - seeker-db
+
+  seeker-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${SEEKER_SERVICE_DB_NAME}
+      POSTGRES_USER: ${SEEKER_SERVICE_DB_USER}
+      POSTGRES_PASSWORD: ${SEEKER_SERVICE_DB_PASS}
+    volumes:
+      - seeker_data:/var/lib/postgresql/data
+
+  # CHAT SERVICE - ASGI
+  chat-service:
+    build:
+      context: ./chat-service
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - JWT_SIGNING_KEY=${JWT_SIGNING_KEY}
+      - DATABASE_URL=${CHAT_SERVICE_DB_URL}
+      - DEBUG=${DEBUG}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}
+    volumes:
+      - static_data:/app/staticfiles
+    depends_on:
+      - chat-db
+      - redis
+
+  chat-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${CHAT_SERVICE_DB_NAME}
+      POSTGRES_USER: ${CHAT_SERVICE_DB_USER}
+      POSTGRES_PASSWORD: ${CHAT_SERVICE_DB_PASS}
+    volumes:
+      - chat_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+volumes:
+  ai_data:
+  auth_data:
+  company_data:
+  seeker_data:
+  chat_data:
+  static_data:
+  media_data:
