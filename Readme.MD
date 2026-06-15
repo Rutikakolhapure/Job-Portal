@@ -221,8 +221,8 @@ Follow these instructions to get the application up and running on your local ma
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/sravan-kumar-ta/Jobify-microservices.git
-   cd "Jobify-microservices"
+   git clone https://github.com/Rutikakolhapure/Job-Portal.git
+   cd "Job-Portal"
    ```
 
 2. **Environment Configuration**
